@@ -729,8 +729,18 @@ class TicketWatcher:
                 # the body and check for yourself.
 
 
-                idx_now    = body.find("now showing")
-                idx_coming = body.find("coming soon")
+                possible_keywords_idx_now = ["now showing", "showing now", "current release"] # Add more keyword if you have to
+                possible_keywords_idx_coming = ["coming soon", "upcoming", "next release"] # Add more keyword if you have to
+
+                for keywords in possible_keywords_idx_now:
+                    idx_now = body.find(keywords)
+                    if idx_now!=-1:
+                        break
+                
+                for keywords in possible_keywords_idx_coming:
+                    idx_coming = body.find(keywords)
+                    if idx_coming!=-1:
+                        break
 
                 if idx_now != -1:
                     # Slice only the "Now Showing" region
