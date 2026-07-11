@@ -1,8 +1,22 @@
-# Ticket Watcher
+# 🎬 Ticket Watcher
 
-A lightweight Python desktop application that monitors a movie-ticketing website in a live Chromium browser and instantly alerts you the moment a film appears in the **Now Showing** section — so you can buy tickets before they sell out.
+**Never miss a movie ticket again.** Ticket Watcher quietly monitors a movie-ticketing website in a real Chromium browser and alerts you — on your desktop *and* your phone — the instant your film goes on sale.
 
-It does not scrape. It attaches to your own running browser session, reads the page text locally on your machine, and never sends any additional requests to the website's server beyond normal page refreshes at the interval you set.
+It does not scrape. It attaches to **your own browser session**, reads the page text locally in memory, and sends nothing to the website beyond the normal page refreshes at the interval you choose. It even keeps working while Chromium is minimized or buried under other windows.
+
+---
+
+## ✨ Features at a Glance
+
+| | Feature |
+|---|---------|
+| 🖥️ | **Adaptive UI** — detects your display resolution *and* OS scaling percentage (Windows & Linux/X11) and sizes itself so every widget fits. Scrolls automatically on tiny screens. |
+| 🎯 | **Three detection engines** — full-page match, section-based *Now Showing* match, or both. Switch per-website from a dropdown, no code editing. |
+| 🔔 | **Three alert behaviours** — notify once and stop, keep repeating the alert, or keep re-checking the page and alerting. |
+| ⌨️ | **Hotkey recorder** — press the combination instead of typing it. Global hotkey brings the hidden window back. |
+| 💾 | **Profiles** — save complete configurations as files and reload them any time (`Ctrl+S` / `Ctrl+O` / `Ctrl+Alt+S`). |
+| 📱 | **Phone push notifications** via [ntfy.sh](https://ntfy.sh) — free, no account, with a one-click *Copy Topic Key* button. |
+| 🕶️ | **True background monitoring** — visibility spoofing makes the website render even when Chromium is minimized or unfocused. |
 
 ---
 
@@ -12,29 +26,29 @@ It does not scrape. It attaches to your own running browser session, reads the p
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [One-Time Browser Setup](#one-time-browser-setup)
-- [Running the App](#running-the-app)
-- [Using the Interface](#using-the-interface)
-  - [Chromium Executable](#chromium-executable)
-  - [Target URL](#target-url)
-  - [Refresh Interval](#refresh-interval)
-  - [Movie / Text to Detect](#movie--text-to-detect)
-  - [Hide Window While Monitoring](#hide-window-while-monitoring)
-  - [Alert Actions](#alert-actions)
-  - [Custom Alert Message](#custom-alert-message)
-- [Configuration File](#configuration-file)
-- [Hotkey Setup on Linux](#hotkey-setup-on-linux)
+- [Quick Start](#quick-start)
+- [The Interface, Top to Bottom](#the-interface-top-to-bottom)
+- [Detection Methods Explained](#detection-methods-explained)
+- [Alert Behaviours Explained](#alert-behaviours-explained)
+- [Profiles: Save & Load Your Setup](#profiles-save--load-your-setup)
 - [Phone Notifications via ntfy.sh](#phone-notifications-via-ntfysh)
+- [Hotkey Setup on Linux](#hotkey-setup-on-linux)
+- [Background Monitoring: How & Why It Works](#background-monitoring-how--why-it-works)
+- [Files the App Creates](#files-the-app-creates)
 - [Troubleshooting](#troubleshooting)
+- [License](#license)
 
 ---
 
 ## How It Works
 
-1. The app launches Chromium with a special `--remote-debugging-port` flag that allows Python to read the contents of the browser tab.
-2. It navigates to the URL you provide (e.g. the "Now Showing" page of a ticketing site) and refreshes it at your chosen interval.
-3. After each refresh it reads the full page text **locally in memory** — no additional network request is made to the server.
-4. It locates the `Now Showing` section of the text and slices out everything up to the `Coming Soon` section. Your search term is then checked against only that region, case-insensitively.
-5. The moment your film is found in the **Now Showing** slice, your chosen alert actions fire and monitoring stops.
+1. The app launches Chromium with the `--remote-debugging-port` flag so Python can read the contents of the browser tab.
+2. It navigates to your target URL and refreshes it at the interval you set.
+3. After each refresh it reads the full page text **locally in memory** — no extra requests hit the server.
+4. Your chosen **detection method** decides where on the page to look for the movie name (whole page, only the *Now Showing* section, or both). Matching is case-insensitive.
+5. On detection, your chosen **alert behaviour** takes over: alert once and stop, or keep alerting every interval until you press Stop.
+
+A small script is injected into every page load that makes the website believe its tab is always visible and focused — this is what lets monitoring continue while Chromium is minimized. See [Background Monitoring](#background-monitoring-how--why-it-works).
 
 ---
 
@@ -42,317 +56,304 @@ It does not scrape. It attaches to your own running browser session, reads the p
 
 ### Python
 
-Python **3.8 or newer** is required. Download it from [python.org](https://www.python.org/downloads/).
+Python **3.8 or newer** — download from [python.org](https://www.python.org/downloads/).
 
 ### Python Libraries
 
-Install all three libraries with a single command:
+The hotkey backend differs per platform, so install the set for your OS:
 
+**Linux (Ubuntu with X11):**
 ```bash
 pip install selenium requests pynput
 ```
 
-Or individually:
-
+**Windows:**
 ```bash
-pip install selenium
-pip install requests
-pip install pynput
+pip install selenium requests keyboard
 ```
+
+**Optional (both platforms):**
+```bash
+pip install pyperclip
+```
+`pyperclip` improves the *Copy Topic Key* button. Without it, the app falls back to Tk's built-in clipboard, which also works — on Linux, installing `xclip` (`sudo apt install xclip`) makes pyperclip functional.
+
+> The app checks for missing libraries at startup and tells you exactly which `pip install` command to run.
 
 ### ChromeDriver
 
-ChromeDriver is downloaded **automatically** by Selenium's built-in Selenium Manager (included with Selenium 4.6 and above). You do not need to install or manage it manually as long as you have Selenium 4.6+.
+Handled **automatically** by Selenium Manager (bundled with Selenium 4.6+). Nothing to download.
 
-Verify your Selenium version after installing:
-
+Check your version and upgrade if needed:
 ```bash
 pip show selenium
-```
-
-If the version shown is below 4.6, upgrade it:
-
-```bash
 pip install --upgrade selenium
 ```
 
 ### Chromium Browser
 
-Download and install Chromium from the official source:
-
+Download Chromium from the official page:
 **[https://www.chromium.org/getting-started/download-chromium/](https://www.chromium.org/getting-started/download-chromium/)**
 
-> **Note:** Google Chrome also works. The app will detect it automatically if Chromium is not found. The instructions below apply equally to both.
+> **Google Chrome works too.** The app auto-detects whichever is installed.
 
 ---
 
 ## Installation
 
-1. Clone or download this repository.
-
 ```bash
 git clone https://github.com/AadityaKandel/Movie-Ticket-Watcher-Notifier.git
 cd ticket-watcher
+pip install selenium requests pynput      # Linux
+# pip install selenium requests keyboard  # Windows
 ```
 
-2. Install the required libraries:
-
-```bash
-pip install selenium requests pynput
-```
-
-3. That is all. No build step is needed.
+That's it — no build step.
 
 ---
 
 ## One-Time Browser Setup
 
-This is the most important step and must be done **before you start monitoring**.
+**Do this before your first monitoring run.** The app uses a dedicated browser profile so your cookie acceptances and logins persist between runs. If you skip this, consent banners can cover the page during automated refreshes and break detection.
 
-The app attaches to your real browser session so that any cookies, accepted terms, and login states are already in place. If you skip this, the website may show cookie banners, popups, or login walls during automated refreshes, which will interfere with page text detection.
+1. Run the app once. It launches Chromium using its own profile folder (`chromium_session`, created next to the script).
+2. **In that Chromium window**, navigate to the website you want to monitor.
+3. Click through **every** cookie banner, consent notice, and "Got it" popup.
+4. If the site requires login to show listings, log in now.
+5. Scroll the page and confirm it loads cleanly with no overlays.
 
-**Steps:**
-
-1. Open the `chromium_session` folder that the app creates in the same directory as `ticket_watcher.py` after its first launch. This is the dedicated browser profile the app uses.
-
-   > Alternatively, just run the app once and let it launch Chromium, then proceed with the steps below in that browser window.
-
-2. In the Chromium window opened by the app, navigate to the website you want to monitor, for example:
-
-   ```
-   https://www.example.com/now-showing
-   ```
-
-3. **Accept all cookie banners, consent notices, and terms-of-service popups** that appear. Click every "Accept", "I Agree", or "Got it" button you see. These acceptances are stored in the `chromium_session` profile folder.
-
-4. If the website requires you to be logged in to see movie listings, log in now and make sure the session is active.
-
-5. Scroll through the page and confirm it is fully loaded with no remaining popups or overlays.
-
-6. You only need to do this once per website. From the second run onwards, the saved session in `chromium_session` will already have your accepted cookies and the page will load cleanly.
-
-> **Important:** Do not delete the `chromium_session` folder after completing setup. Deleting it will erase your saved cookies and you will need to accept everything again.
+You only do this once per website. The acceptances are stored in `chromium_session` — **don't delete that folder**, or you'll have to accept everything again.
 
 ---
 
-## Running the App
+## Quick Start
 
 ```bash
 python ticket_watcher.py
 ```
 
-On first launch, the app will:
-
-1. Try to locate your Chromium or Chrome executable automatically.
-2. Launch it in the background with remote debugging enabled on port `9222`.
-3. Wait for the browser to be ready, shown by the status line turning green.
-
-If Chromium is not found automatically, a warning will appear and you can use the **Browse** button to point to the executable manually. See [Chromium Executable](#chromium-executable) below.
+1. Wait for the status line to turn **green** (`✔ Chromium ready (port 9222)`).
+2. Paste the **full URL** of the *Now Showing* page.
+3. Set the **refresh interval** (30–300 seconds; `60` is a good default).
+4. Type the **movie name** exactly as the website spells it.
+5. Pick a **detection method** and an **alert behaviour** (the `?` buttons explain each option).
+6. Tick at least one **alert action**.
+7. Press **▶ Start Monitoring** — then minimize everything and get on with your day. 🍿
 
 ---
 
-## Using the Interface
+## The Interface, Top to Bottom
 
 ### Chromium Executable
+Shows the detected browser path and a live status:
 
-The top row shows the path to the Chromium or Chrome executable and a status indicator.
+| Status | Meaning |
+|--------|---------|
+| 🟠 *Detecting…* | Searching for the executable / waiting for launch |
+| 🟢 *✔ Chromium ready (port 9222)* | Connected — you can start monitoring |
+| 🔴 *✘ Not found* | Auto-detection failed — click **Browse…** |
 
-- **Detecting…** (orange) — the app is searching for the executable.
-- **✔ Chromium ready (port 9222)** (green) — the browser is running and the app is connected.
-- **✘ Not found** (red) — automatic detection failed.
-
-If detection fails, click **Browse…** and navigate to the Chromium or Chrome binary on your system.
-
-Common locations:
+Common locations if you need to browse manually:
 
 | Platform | Typical path |
 |----------|-------------|
 | Linux    | `/usr/bin/chromium-browser` or `/usr/bin/google-chrome` |
 | Windows  | `C:\Program Files\Google\Chrome\Application\chrome.exe` |
 
-Once you select a path and the status turns green, you are ready to proceed.
-
----
-
 ### Target URL
-
-Enter the **full URL** of the page you want to monitor, including the directory path. Do not enter just the homepage — go to the specific section of the website that lists Now Showing and Coming Soon films, for example:
-
+Enter the **full URL of the listings page**, not the homepage:
 ```
 https://www.example.com/movies/now-showing
 ```
-
-The more specific the URL, the better. If the Now Showing and Coming Soon listings are both on a single page, that is perfectly fine — the app handles that automatically by reading only the text between those two section headings.
-
----
+It's fine if *Now Showing* and *Coming Soon* share one page — the section-based detection method handles that.
 
 ### Refresh Interval
-
-Enter how often (in seconds) the page should be refreshed and checked. The allowed range is **30 to 300 seconds** (30 seconds to 5 minutes).
-
-- Values below 30 or above 300 will fail validation and the app will not start.
-- A value of `60` (one minute) is a reasonable default for most use cases.
-
----
+How often the page is reloaded and checked, in seconds. Allowed range: **30–300**. This same interval also drives the repeat cadence of the repeat alert behaviours — there is deliberately no second timer to configure.
 
 ### Movie / Text to Detect
+Type the title **exactly as the website spells it** (not as Google or IMDb spells it). Matching is case-insensitive. If the title is a common phrase, use a distinctive word unique to that film's listing. The `?` button repeats this advice in-app.
 
-Enter the name of the film exactly as it appears on the website's Now Showing or Coming Soon listing — **not** as it appears on Google or IMDb.
-
-- Matching is **case-insensitive**. You can type in uppercase, lowercase, or a mix.
-- If the film's full title is a common phrase that might appear elsewhere on the page, use a distinctive word or partial phrase that uniquely identifies it in the listing.
-- Click the **`?`** button next to the label to see this reminder at any time.
-
----
+### Detection Method
+A dropdown with three engines — see [Detection Methods Explained](#detection-methods-explained). The `?` button describes whichever option is currently selected, including its trade-offs.
 
 ### Hide Window While Monitoring
+Tick this and a **hotkey recorder** opens: hold your modifiers (Ctrl / Alt / Shift / Win) and press a key — the combination is captured automatically, no typing and no syntax to remember. A **Clear** button lets you redo it. When monitoring starts, the window vanishes; press your hotkey any time to bring it back.
 
-Check this box if you want the app window to disappear from the screen once monitoring starts, running silently in the background.
-
-When you check this box, a small dialog will open asking for a **global hotkey** to bring the window back.
-
-- Enter a key combination using the format `<ctrl>+<alt>+t` or `<ctrl>+h`.
-- Both parts must be present — a modifier key (e.g. `<ctrl>`, `<alt>`, `<shift>`) and a regular key.
-- If you enter an invalid hotkey or close the dialog without saving, the checkbox will automatically uncheck itself.
-- A valid hotkey is saved to `config.json` and will be remembered the next time you run the app.
-
-> **Linux users:** Global hotkeys require an X11 session. Click the **Linux Hotkey Guide** button for step-by-step instructions. See also [Hotkey Setup on Linux](#hotkey-setup-on-linux).
-
----
+> Linux users: global hotkeys need an X11 session — see [Hotkey Setup on Linux](#hotkey-setup-on-linux).
 
 ### Alert Actions
+Pick one or more (at least one is required):
 
-Select one or more actions to trigger when the film is detected. At least one must be chosen.
-
-| Option | Description |
+| Option | What it does |
 |--------|-------------|
-| **In-app popup** | Brings the window back to focus (if hidden) and shows a popup dialog. |
-| **System desktop notification** | Sends a native OS banner notification (uses `notify-send` on Linux, PowerShell on Windows). |
-| **↳ Silent / low-priority** | Modifier for the system notification — sends it quietly without sound. Only applies when system notification is also checked. |
-| **Send push to phone via ntfy.sh** | Sends a push notification to your phone through [ntfy.sh](https://ntfy.sh). See [Phone Notifications via ntfy.sh](#phone-notifications-via-ntfysh). |
+| **In-app popup** | Unhides the window and shows a dialog. Always fires **last**, so it can never delay the other alerts. |
+| **System desktop notification** | Native OS banner (`notify-send` on Linux, PowerShell on Windows). |
+| **↳ Silent / low-priority** | Makes the system notification quiet. Only applies when the one above is ticked. |
+| **Push to phone via ntfy.sh** | Instant push notification to your phone. The `?` button contains setup steps *and* a **Copy Topic Key** button. |
 
----
+### Alert Behaviour
+A dropdown choosing what happens *after* detection — see [Alert Behaviours Explained](#alert-behaviours-explained).
 
 ### Custom Alert Message
-
-Type a custom message to be sent with all alert actions. Leave it blank to use the automatic message:
-
+Optional. Leave blank for the automatic message:
 ```
 <Movie Name> is open for tickets. BUY THEM NOW!
 ```
 
 ---
 
-## Configuration File
+## Detection Methods Explained
 
-The app automatically creates a `config.json` file in the same directory as the script. It saves:
+Different websites structure their pages differently. Instead of editing code per site, pick the engine that fits:
 
-- The last used URL, refresh interval, and movie name
-- Your chosen alert actions and custom message
-- Your global hotkey (if set)
-- Your `ntfy.sh` topic key (auto-generated on first run)
-- The path to your Chromium executable
+| Method | How it searches | Best for |
+|--------|----------------|----------|
+| **Full-page match (simple)** | The movie name anywhere in the page's visible text. | Sites with unusual layouts or no clear section headings. ⚠️ May alert early if the film is listed under *Coming Soon* on the same page. |
+| **Section-based match** | Finds a *Now Showing / Showing Now / Current Release* heading, then a *Coming Soon / Upcoming / Next Release* heading, and searches **only the text between them**. | Classic ticketing sites. Ignores films that are merely announced. Detects nothing if the headings don't exist. |
+| **Both** | Tries the section-based match first; falls back to full-page if it finds nothing. | When you're not sure how the site is built. Inherits the early-alert caveat of full-page on some sites. |
 
-All of these fields are restored the next time the app is launched. You do not need to re-enter anything after the first run.
+The `?` button beside the dropdown explains the currently selected option in-app.
 
 ---
 
-## Hotkey Setup on Linux
+## Alert Behaviours Explained
 
-Global hotkeys require the display server to be **X11 / Xorg**, not Wayland. Wayland blocks background keyboard listeners for security reasons.
+| Behaviour | After the first detection… | Use when |
+|-----------|---------------------------|----------|
+| **Notify once, then stop** | Every selected alert fires once, monitoring ends. | One heads-up is enough. |
+| **Repeat notifications (check once)** | The page is **not** checked again. Alerts re-fire every refresh interval until you press **Stop**. | You might miss the first ping — the app keeps nagging without wasting reloads. |
+| **Repeat + keep re-checking** | The page keeps reloading every interval; alerts fire each time the film is **still** found. | Listings that appear/disappear (shows selling out) and you want live confirmation with every alert. |
 
-**To switch to an X11 session:**
+The repeat cadence always equals your **Refresh Interval**.
 
-1. Log out of your current desktop session.
-2. On the login screen, click the gear icon **⚙** (usually in the bottom-right corner).
-3. Select **"Ubuntu on Xorg"**, **"X11"**, or **"Xorg"** from the list.
-4. Log back in.
+> 📱 Heads-up: in the repeat behaviours, phone pushes also repeat every interval. Your pocket will buzz. That's the point — but maybe not overnight.
 
-**If X11 does not appear in the list, install it first:**
+---
 
-```bash
-sudo apt install xorg
-```
+## Profiles: Save & Load Your Setup
 
-**For a permanent switch** (disables Wayland system-wide):
+Everything on screen — URL, interval, movie, detection method, alert behaviour, actions, hotkey, custom message — can be saved as a **profile file** and reloaded later. Keep one profile per cinema, per movie, or per use case.
 
-```bash
-sudo nano /etc/gdm3/custom.conf
-```
+| Action | Menu | Shortcut | Behaviour |
+|--------|------|----------|-----------|
+| Open a profile | File ▸ Open Profile… | `Ctrl+O` | Pick a `.json` profile; all fields update instantly. |
+| Save | File ▸ Save Profile | `Ctrl+S` | **First press** in a session acts like Save As (asks where). Every later press saves **silently** to the same file — a brief *✔ saved* flashes in the title bar. |
+| Save As | File ▸ Save Profile As… | `Ctrl+Alt+S` | Always opens the file dialog, e.g. to fork a profile under a new name. |
 
-Find the line `#WaylandEnable=false`, uncomment it, and save. Then reboot.
-
-```ini
-[daemon]
-WaylandEnable=false
-```
-
-> Windows users do not need to do anything. Global hotkeys work natively.
+The app also remembers your **last used profile** and reloads it automatically on the next launch.
 
 ---
 
 ## Phone Notifications via ntfy.sh
 
-[ntfy.sh](https://ntfy.sh) is a free, open-source push notification service that requires no account.
+[ntfy.sh](https://ntfy.sh) is a free, open-source push service — no account needed.
 
-**Setup:**
+1. Install the **ntfy** app:
+   - Android → [Google Play Store](https://play.google.com/store/apps/details?id=io.heckel.ntfy)
+   - iOS → [Apple App Store](https://apps.apple.com/app/ntfy/id1625396347)
+2. In Ticket Watcher, click the **`?`** next to the ntfy option. The dialog shows your unique topic key with a **Copy Topic Key** button — click it, done.
+3. In the phone app, tap **＋ → Subscribe to topic** and paste the key.
+4. Tick the ntfy checkbox before starting. Every detection now pushes straight to your phone.
 
-1. Install the **ntfy** app on your phone:
-   - Android: [Google Play Store](https://play.google.com/store/apps/details?id=io.heckel.ntfy)
-   - iOS: [Apple App Store](https://apps.apple.com/app/ntfy/id1625396347)
+> 🔒 **Keep the topic key private.** It's a random 15-character string; anyone who knows it can receive your notifications.
 
-2. Open the app, tap **"+"** or **"Subscribe to topic"**.
+---
 
-3. Enter your unique topic key. You can find it by clicking the **`?`** button next to the ntfy option in the app, or by opening `config.json` and looking for the `ntfy_topic` field.
+## Hotkey Setup on Linux
 
-4. From now on, whenever the film is detected, a push notification will arrive on your phone immediately.
+Global hotkeys require **X11/Xorg** — Wayland blocks background keyboard listeners by design.
 
-> **Keep your topic key private.** It is a randomly generated 15-character string. Anyone who knows this key can subscribe to your notifications.
+**Switch to X11:**
+1. Log out.
+2. On the login screen, click the gear **⚙** (bottom-right).
+3. Choose **"Ubuntu on Xorg"** (or any X11/Xorg option).
+4. Log back in.
+
+**If X11 isn't listed:**
+```bash
+sudo apt install xorg
+```
+
+**Permanent switch** — edit `/etc/gdm3/custom.conf`, uncomment `WaylandEnable=false`, reboot:
+```ini
+[daemon]
+WaylandEnable=false
+```
+
+> Windows users: nothing to do — hotkeys work out of the box via the `keyboard` library.
+
+---
+
+## Background Monitoring: How & Why It Works
+
+Modern browsers throttle and even freeze minimized/covered windows, and many websites additionally use the **Page Visibility API** to stop rendering when their tab isn't visible. That combination is why naive automation goes blank the moment you switch apps.
+
+Ticket Watcher counters both layers:
+
+1. **Browser-side:** Chromium is launched with throttling disabled (`--disable-background-timer-throttling`, `--disable-backgrounding-occluded-windows`, `--disable-renderer-backgrounding`, and occlusion detection off).
+2. **Website-side:** a script injected before every page load makes the site believe its tab is permanently visible and focused, and keeps `requestAnimationFrame` ticking so JavaScript-rendered content keeps painting.
+3. **Reading-side:** page text is read in a paint-independent way, with a `textContent` fallback for anything that hasn't visually rendered.
+
+Result: minimize Chromium, bury it under ten windows, walk away — detection keeps working.
+
+> If a future site update ever reintroduces the problem, a commented `--headless=new` fallback is left in the code: a headless browser always reports itself as visible, so there is no window to focus at all.
+
+---
+
+## Files the App Creates
+
+| File / folder | Purpose | Safe to delete? |
+|---------------|---------|-----------------|
+| `config.json` | Machine-level settings: ntfy topic key, Chromium path, last used profile. | Deleting regenerates a **new** ntfy topic — you'd need to re-subscribe on your phone. |
+| `chromium_session/` | The dedicated browser profile holding your accepted cookies and logins. | Deleting means redoing the [one-time browser setup](#one-time-browser-setup). |
+| Your `.json` profiles | Full saved configurations, stored wherever you chose. | Yes — they're just your own save files. |
 
 ---
 
 ## Troubleshooting
 
-**Chromium does not launch automatically**
-
-Use the Browse button to manually locate the executable. Common locations are listed in the [Chromium Executable](#chromium-executable) section. Make sure Chromium is fully installed, not just downloaded as an archive.
+**Chromium doesn't launch automatically**
+Use **Browse…** to locate the executable manually (paths listed [above](#chromium-executable)). Make sure Chromium is installed, not just downloaded as an archive.
 
 **Status stays orange / never turns green**
-
-Chromium may have opened a window asking for confirmation (e.g. "Make Chromium your default browser?"). Click through any prompts in the browser window, or close Chromium manually and click Browse again to relaunch it.
+Chromium may be waiting on a first-run prompt ("Make Chromium your default browser?"). Click through it, or close Chromium and click Browse to relaunch.
 
 **"WebDriver Error" on Start**
-
-This means Python connected to the browser but the ChromeDriver version does not match your Chromium version. Run:
-
+Python reached the browser but ChromeDriver doesn't match your Chromium version:
 ```bash
 pip install --upgrade selenium
 ```
+Selenium Manager fetches the right driver automatically on the next start.
 
-Selenium Manager will then fetch the correct ChromeDriver automatically on the next start.
+**The film is detected instantly on the first check**
+Your search term probably also appears in the *Coming Soon* section, a recommendation widget, or a footer. Switch the **Detection Method** dropdown to **Section-based match** so only the *Now Showing* region is searched — no code editing required.
 
-**The film is detected immediately on the first check**
+**Nothing is ever detected with Section-based match**
+The page likely lacks the expected headings (*Now Showing* / *Coming Soon* etc.). Switch to **Full-page** or **Both**. The `?` button explains what each engine expects.
 
-Your search term may be present in the Coming Soon section rather than Now Showing. The app will only alert if the text appears between the `Now Showing` heading and the `Coming Soon` heading on the page. Double-check that the name you entered matches the Now Showing listing exactly, and not something else on the page (e.g. a recommendation widget or a footer banner).
+**Detection stops when Chromium is minimized**
+This shouldn't happen — background monitoring is built in. If a site update breaks it, enable the commented headless fallback in the code (search for `--headless` in `_launch_exe`).
 
-_Note:The script is currently modified to scan the entire body but if you want it to scan the Now Showing section only, you can follow the instructions in the code line no 720._
+**Cookie banner keeps reappearing during refreshes**
+The [one-time browser setup](#one-time-browser-setup) wasn't completed, or `chromium_session` was deleted. Accept all prompts in the app-launched browser window and try again.
 
-**The popup or cookie banner keeps appearing during refreshes**
+**Global hotkey does nothing on Linux**
+You're on Wayland. Follow [Hotkey Setup on Linux](#hotkey-setup-on-linux).
 
-You have not completed the one-time browser setup. Go back to [One-Time Browser Setup](#one-time-browser-setup) and accept all consent prompts in the `chromium_session` browser window before starting monitoring.
+**Hotkey recorder captures nothing**
+Linux: confirm `pynput` is installed and you're on X11. Windows: confirm `keyboard` is installed; some setups require running the terminal as Administrator for global hooks.
 
-**Global hotkey does not work on Linux**
+**No push notification on the phone**
+- Verify the phone app is subscribed to the **exact** topic key (use *Copy Topic Key* to avoid typos).
+- Check the phone has internet.
+- Confirm the ntfy checkbox was ticked **before** pressing Start.
+- If you deleted `config.json`, a new key was generated — re-subscribe.
 
-Your session is likely running on Wayland. Follow the steps in [Hotkey Setup on Linux](#hotkey-setup-on-linux) to switch to an X11 session.
-
-**No push notification received on phone**
-
-- Confirm the ntfy app is subscribed to the correct topic key (check `config.json`).
-- Make sure your phone has an active internet connection.
-- Check that the **Send push notification to phone via ntfy.sh** checkbox is selected before pressing Start.
+**Ctrl+S opened a file dialog again**
+That's by design for the *first* save of each session. Every save after that is silent. `Ctrl+Alt+S` is the one that always asks.
 
 ---
 
 ## License
 
-MIT — do whatever you want with it. However, make sure that the copy of the license is provided in all the modifications or copies of the script. 
+MIT — do whatever you want with it, as long as a copy of the license is included in all modifications or copies of the script.
