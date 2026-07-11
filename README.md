@@ -103,7 +103,7 @@ Download Chromium from the official page:
 
 ```bash
 git clone https://github.com/AadityaKandel/Movie-Ticket-Watcher-Notifier.git
-cd ticket-watcher
+cd Movie-Ticket-Watcher-Notifier
 pip install selenium requests pynput      # Linux
 # pip install selenium requests keyboard  # Windows
 ```
@@ -129,7 +129,7 @@ You only do this once per website. The acceptances are stored in `chromium_sessi
 ## Quick Start
 
 ```bash
-python ticket_watcher.py
+python ticket_watcher_v2.py
 ```
 
 1. Wait for the status line to turn **green** (`✔ Chromium ready (port 9222)`).
