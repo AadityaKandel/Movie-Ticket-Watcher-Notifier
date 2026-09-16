@@ -4,6 +4,8 @@
 
 It does not scrape. It attaches to **your own browser session**, reads the page text locally in memory, and sends nothing to the website beyond the normal page refreshes at the interval you choose. It even keeps working while Chromium is minimized or buried under other windows.
 
+UPDATED VERSION **[HERE](https://github.com/AadityaKandel/Movie-Ticket-Watcher-Notifier-V3/tree/main)**
+
 ---
 
 ## ✨ Features at a Glance
